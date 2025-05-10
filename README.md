@@ -47,7 +47,7 @@ The filter coefficients are calculated as they would be used in the typical biqu
 ## References
 
 The filter calculations come from a few sources:
-- The famous [Robert Bristow-Johnson cookbook](https://www.musicdsp.org/en/latest/_downloads/3e1dc886e7849251d6747b194d482272/Audio-EQ-Cookbook.txt). There are a couple errors in the original versoin, so the [updated version from 2001](https://music.columbia.edu/pipermail/music-dsp/2001-March/041752.html) is used for shelf filter calculation.
+- The famous [Robert Bristow-Johnson cookbook](https://www.musicdsp.org/en/latest/_downloads/3e1dc886e7849251d6747b194d482272/Audio-EQ-Cookbook.txt). There are a couple errors in the original version, so the [updated version from 2001](https://web.archive.org/web/20240227013132/http://music.columbia.edu/pipermail/music-dsp/2001-March/041752.html) is used for shelf filter calculation.
 - [Designing Audio Effect Plugins in C++](https://www.willpirkle.com/about/books/), Will Pirkle.
 - [Seven Woods Audio, AN-11](http://freeverb3vst.osdn.jp/doc/AN11.pdf)
 - The MiniDSP [all-digital-coeffs-v1.2](https://www.minidsp.com/images/fbfiles/files/All_digital_coefs_v1-20101026.zip) spreadsheet
