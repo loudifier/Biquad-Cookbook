@@ -1,11 +1,33 @@
+[![AI disclosure](https://img.shields.io/badge/%F0%9F%A4%96%20Slop-30%25-%23874312)](ai.md)
+
 # Biquad Cookbook
-## Biquad filter cookbook implemented in Excel
+## A collection of tools and documentation for designing audio EQs with and calculating coefficients for biquad filters
 
-[Biquad Cookbook.xlsx](Biquad%20Cookbook.xlsx)
+### [Interactive EQ Designer](https://loudifier.github.io/Biquad-Cookbook)
 
-A ground-up reimplementation of the MiniDSP all-digital-coeffs spreadsheet with more consistent and more useful labeling and graphs between the various filters, additional filter types, and notes indicating the sources of the original filter derivations and calculations.
+Webpage that lets you easily build up an EQ and see the combined frequency response, phase, impulse response, and group delay of multiple filters. Load a frequency response curve and see the effective response with those filters applied
+
+[![EQ designer](img/eq-designer.png)](https://loudifier.github.io/Biquad-Cookbook)
+
+<br>
+
+### [Plaintext list of filter types and coefficient calculation formulas](Biquad-Cookbook.txt)
+
+A simple text file in the style of the RBJ cookbook, with additional filter types
+
+<br>
+
+### [Excel spreadsheet](Biquad%20Cookbook.xlsx)
+
+A ground-up reimplementation of the MiniDSP all-digital-coeffs spreadsheet with more consistent and more useful labeling and graphs between the various filters, and additional filter types
 
 ![Lowpass filter sheet](img/lpf-sheet.png)
+
+
+
+<br>
+
+## Filters, Calculation, and format
 
 Filter types included:
 - 1st order Lowpass
@@ -23,10 +45,6 @@ Filter types included:
 - Bandpass (constant peak)
 - Notch
 - Linkwitz Transform
-
-<br>
-
-## Calculation, format
 
 Each filter is calculated from a number of input parameters, corner or center frequency, Q, gain, etc, along with the sampling rate, Fs, and an Output Gain value in dB. The output gain value simply scales the b coefficients to increase headroom for filters with gain or make up amplitude from attenuating filters, and can be safely ignored by setting the value to 0.
 

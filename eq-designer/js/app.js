@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupDarkMode();
   setupResetZoom();
   setupDivider();
+  setupDisclosure();
 
   renderFilterList();
   updatePlot();
@@ -170,6 +171,8 @@ function setupSaveLoad() {
     try {
       const obj = await loadYAMLFromFile(file);
       appModel.fromJSON(obj);
+      document.getElementById('sample-rate').value = appModel.sampleRate;
+      document.getElementById('output-gain').value = appModel.outputGainDb;
       renderFilterList();
       referenceCurve = null;
       plotRevision++;
@@ -217,6 +220,19 @@ function setupResetZoom() {
   document.getElementById('reset-zoom').addEventListener('click', () => {
     plotRevision++;
     updatePlot();
+  });
+}
+
+function setupDisclosure() {
+  const modal = document.getElementById('disclosure-modal');
+  document.getElementById('btn-disclosure').addEventListener('click', () => {
+    modal.classList.add('open');
+  });
+  document.getElementById('btn-close-disclosure').addEventListener('click', () => {
+    modal.classList.remove('open');
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.remove('open');
   });
 }
 
