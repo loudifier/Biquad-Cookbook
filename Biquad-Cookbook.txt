@@ -1,0 +1,285 @@
+    Biquad cookbook for calculating audio EQ filter coefficients
+------------------------------------------------------------------------------
+This file is an extension of the de facto standard Audio-EQ-Cookbook.txt by
+Robert Bristow-Johnson.
+
+The original cookbook includes analog filter prototypes and brief discussion
+of the bilinear transform, frequency warping, and biquad filter topologies.
+This cookbook instead focuses compiling a more complete collection of filter
+types that you may want to calculate the coefficients for, a plaintext version
+of the Excel spreadsheet in https://github.com/loudifier/Biquad-Cookbook
+
+The filter calculations presented are from a few sources:
+- The original RBJ Cookbook: https://www.musicdsp.org/en/latest/_downloads/3e1dc886e7849251d6747b194d482272/Audio-EQ-Cookbook.txt
+- The updated RBJ Cookbook from 2001: https://web.archive.org/web/20240227013132/http://music.columbia.edu/pipermail/music-dsp/2001-March/041752.html
+- Designing Audio Effect Plugins in C++, by Will Pirkle
+- Seven Woods Audio, AN-11: https://web.archive.org/web/20230711111226/http://freeverb3vst.osdn.jp/doc/AN11.pdf
+- The MiniDSP all-digital-coeffs-v1.2 spreadsheet: https://www.minidsp.com/images/fbfiles/files/All_digital_coefs_v1-20101026.zip
+
+Please refer to the formula sources for the filter theory and math used to
+derive the coefficient calculation formulas
+
+------------------------------------------------------------------------------
+
+The filter coefficients are calculated as they would be used in the typical
+biquad Direct Form I:
+y[n] = (b0/a0)*x[n] + (b1/a0)*x[n-1] + (b2/a0)*x[n-2] - (a1/a0)*y[n-1] - (a2/a0)*y[n-2]
+
+The coefficients are presented in the raw form, but many biquad
+implementations expect five normalized coefficients, scaled such that a0 is
+equal to 1 and omitted from the calculation. To convert the raw coefficients
+to this form, calculate the raw coefficients the divide all of the coefficient
+values by a0.
+
+Gain and/or phase inversion can be applied at the filtering stage by scaling
+the b coefficients. e.g. add 3dB of gain by multiplying the b coefficients by
+1.414 or invert and attenuate the filter's output by multiplying the b
+coefficients by -0.5
+
+All filter types depend on the sampling frequency and most filter formulas use
+a common set of inputs and intermediate values. 
+
+Inputs:
+- fs: sampling frequency
+- f0: center or corner/-3dB frequency, depending on the filter type ("wherever
+it's happenin', man")
+- dB: gain boost or attenuation for peaking and shelving filters
+- Q: the sharpness or resonance of the filter. The definition varies for
+different filter types. Generally, Q=0.707 results in a magnitude response
+that is maximally flat in the passband or has the sharpest possible monotonic
+response (Butterworth alignment), and Q=0.577 results in a time-domain
+response with the lowest monotonic group delay ("minimum phase" / Bessel
+alignment). First-order filters have a characteristic Q of 0.5
+
+Common intermediate values:
+- A = 10^(dB/40)
+- w0 = 2*PI*f0/fs
+- alpha = sin(w0) / (2*Q)
+
+------------------------------------------------------------------------------
+
+    Filter coefficient calculations
+
+
+
+    First-order lowpass filter (Pirkle)
+
+gamma = cos(w0) / (1 + sin(w0))
+
+b0 = (1 - gamma) / 2
+b1 = (1 - gamma) / 2
+b2 =  0
+a0 =  1
+a1 = -gamma
+a2 =  0
+
+
+
+    First-order highpass filter (Pirkle)
+
+gamma = cos(w0) / (1 + sin(w0))
+
+b0 = (1 + gamma) / 2
+b1 = (1 + gamma) / 2
+b2 =  0
+a0 =  1
+a1 = -gamma
+a2 =  0
+
+
+
+    First-order allpass filter (Pirkle)
+
+delta = (tan(PI*f0/fs) - 1) / (tan(PI*f0/fs) + 1)
+
+b0 = delta
+b1 = 1
+b2 = 0
+a0 = 1
+a1 = delta
+a2 = 0
+
+
+
+    First-order low shelf (Seven Woods AN-11)
+Original formulas result in inverted phase and have a gain error introduced
+from frequency warping effects. Both are corrected here.
+
+f1 = f0 / A
+f2 = f0 * A
+L1 = -exp(-2*PI*f1/fs)
+K1 = -exp(-2*PI*f2/fs)
+norm = (1 + K1) / (1 + L1)
+correction = 10^(dB/20) / norm
+
+b0 = correction
+b1 = K1 * correction
+b2 = 0
+a0 = 1
+a1 = L1
+a2 = 0
+
+
+
+    First-order high shelf (Seven Woods AN-11)
+Original formulas result in inverted phase, which is corrected here
+
+f1 = f0 * A
+f2 = f0 / A
+L1 = -exp(-2*PI*f1/fs)
+K1 = -exp(-2*PI*f2/fs)
+norm = (1 + L1) / (1 + K1)
+
+b0 = norm
+b1 = K1 * norm
+b2 = 0
+a0 = 1
+a1 = L1
+a2 = 0
+
+
+
+    Second-order lowpass filter (RBJ)
+
+b0 = (1 - cos(w0)) / 2
+b1 =  1 - cos(w0)
+b2 = (1 - cos(w)) / 2
+a0 =  1 + alpha
+a1 = -2 * cos(w0)
+a2 =  1 - alpha
+
+
+
+    Second-order highpass filter (RBJ)
+
+b0 =  (1 + cos(w0)) / 2
+b1 = -(1 + cos(w0))
+b2 =  (1 + cos(w0)) / 2
+a0 =   1 + alpha
+a1 =  -2 * cos(w0)
+a2 =   1 - alpha
+
+
+
+    Second-order allpass filter (RBJ)
+
+b0 =   1 - alpha
+b1 =  -2 * cos(w0)
+b2 =   1 + alpha
+a0 =   1 + alpha
+a1 =  -2 * cos(w0)
+a2 =   1 - alpha
+
+
+
+   Second-order low shelf filter (RBJ 2001)
+
+beta = sqrt(A) / Q
+
+b0 =    A * ((A+1) - (A-1)*cos(w0) + beta*sin(w0))
+b1 =  2*A * ((A-1) - (A+1)*cos(w0))
+b2 =    A * ((A+1) - (A-1)*cos(w0) - beta*sin(w0))
+a0 =         (A+1) + (A-1)*cos(w0) + beta*sin(w0)
+a1 =   -2 * ((A-1) + (A+1)*cos(w0))
+a2 =         (A+1) + (A-1)*cos(w0) - beta*sin(w0)
+
+
+
+   Second-order high shelf filter (RBJ 2001)
+
+beta = sqrt(A) / Q
+
+b0 =    A * ((A+1) + (A-1)*cos(w0) + beta*sin(w0))
+b1 = -2*A * ((A-1) + (A+1)*cos(w0)
+b2 =    A * ((A+1) + (A-1)*cos(w0) - beta*sin(w0))
+a0 =         (A+1) - (A-1)*cos(w0) + beta*sin(w0)
+a1 =    2 * ((A-1) - (A+1)*cos(w0)
+a2 =         (A+1) - (A-1)*cos(w0) - beta*sin(w0)
+
+
+
+    Peaking EQ filter (RBJ)
+
+b0 =   1 + alpha*A
+b1 =  -2 * cos(w0)
+b2 =   1 - alpha*A
+a0 =   1 + alpha/A
+a1 =  -2 * cos(w0)
+a2 =   1 - alpha/A
+
+
+
+    Bandpass filter, constant skirt gain (RBJ)
+dB magnitude at f0 = 20*log10(Q)
+
+b0 =  Q * alpha
+b1 =  0
+b2 = -Q * alpha
+a0 =  1 + alpha
+a1 = -2 * cos(w0)
+a2 =  1 - alpha
+
+
+
+    Bandpass filter, constant peak gain (RBJ)
+magnitude at f0 = 0dB
+
+b0 =  alpha
+b1 =  0
+b2 = -alpha
+a0 =  1 + alpha
+a1 = -2 * cos(w0)
+a2 =  1 - alpha
+
+
+
+    Notch filter (RBJ)
+
+b0 =   1
+b1 =  -2 * cos(w0)
+b2 =   1
+a0 =   1 + alpha
+a1 =  -2 * cos(w0)
+a2 =   1 - alpha
+
+
+
+    Linkwitz transform (MiniDSP)
+The Linkwitz transform is a special low shelf filter where the Q of the upper
+and lower transitions can be set independently. This allows you to apply a
+filter that effectively changes a second-order highpass response with
+arbitrary frequency (f0) and Q (Q0) to a different highpass response with
+arbitrary frequency (fp) and Q (Qp).
+
+fc  = (f0+fp)/2
+d0i = (2*PI*f0)^2
+d1i = (2*PI*f0)/Q0
+c0i = (2*PI*fp)^2
+c1i = (2*PI*fp)/Qp
+gn  = (2*PI*fc)/(tan(PI*fc/fs))
+
+b0 = d0i + gn*d1i + gn^2
+b1 = 2 * (d0i - gn^2)
+b2 = d0i - gn*d1i + gn^2
+a0 = c0i + gn*c1i + gn^2
+a1 = 2 * (c0i - gn^2)
+a2 = c0i - gn*c1i + gn^2
+
+
+If you would prefer to set f0, Q0, and Qp, but control the amount of boost (or
+cut), you can solve for the fp needed to achieve a given shelf gain in dB
+
+fp = f0 / 2^(dB / 20*log10(4))
+
+In DSP systems where you would like to use a Linkwitz transform, but can't use
+biquad coefficients and only have standard filter types, you can exactly
+recreate a Linkwitz transform filter using a standard low shelf and peaking EQ
+filter
+
+fshelf  = 2^(log2(f0/fp) / 2) * fp
+Qshelf  = Qp
+dBshelf = log2(f0/fp) * 20*log10(4)
+fpeak   = f0
+Qpeak   = 2^(log2(Q0/Qp) / 2) * Qp
+dBpeak  = 20*log10(Qp/Q0)
+
