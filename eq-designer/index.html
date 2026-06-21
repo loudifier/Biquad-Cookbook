@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biquad EQ Designer</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+</head>
+<body class="dark">
+  <div id="app">
+    <header>
+      <h1>Biquad EQ Designer</h1>
+      <div class="header-controls">
+        <button id="toggle-dark" class="header-btn">&#9728;</button>
+      </div>
+    </header>
+
+    <aside id="filter-panel">
+      <div class="filter-panel-controls">
+        <label>Sample Rate: <input type="number" id="sample-rate" value="48000" min="1000" max="192000" step="1000"> Hz</label>
+        <label>Output Gain: <input type="number" id="output-gain" value="0" step="0.5"> dB</label>
+      </div>
+      <div class="filter-panel-header">
+        <select id="add-filter-select">
+          <option value="">+ Add Filter...</option>
+          <option value="lowpass_1st">1st Order Lowpass</option>
+          <option value="highpass_1st">1st Order Highpass</option>
+          <option value="allpass_1st">1st Order Allpass</option>
+          <option value="lowshelf_1st">1st Order Low Shelf</option>
+          <option value="highshelf_1st">1st Order High Shelf</option>
+          <option value="lowpass_2nd">2nd Order Lowpass</option>
+          <option value="highpass_2nd">2nd Order Highpass</option>
+          <option value="allpass_2nd">2nd Order Allpass</option>
+          <option value="lowshelf_2nd">2nd Order Low Shelf</option>
+          <option value="highshelf_2nd">2nd Order High Shelf</option>
+          <option value="peaking_eq">Peaking EQ</option>
+          <option value="bandpass_skirt">Bandpass (Skirt Gain)</option>
+          <option value="bandpass_peak">Bandpass (Peak Gain)</option>
+          <option value="notch">Notch</option>
+          <option value="linkwitz_transform">Linkwitz Transform</option>
+        </select>
+      </div>
+
+      <ul id="filter-list"></ul>
+
+      <div class="filter-panel-actions">
+        <button id="save-eq" class="btn">Save EQ</button>
+        <button id="load-eq" class="btn">Load EQ</button>
+        <button id="export-curve" class="btn">Export Curve</button>
+        <button id="load-reference" class="btn">Load Curve</button>
+        <input type="file" id="load-eq-input" hidden accept=".yaml,.yml">
+        <input type="file" id="load-reference-input" hidden accept=".csv,.txt">
+      </div>
+    </aside>
+
+    <div id="divider"></div>
+
+    <section id="plot-section">
+      <nav id="plot-tabs">
+        <button class="tab active" data-plot="freq">Frequency Response</button>
+        <button class="tab" data-plot="phase">Phase</button>
+        <button class="tab" data-plot="impulse">Impulse Response</button>
+        <button class="tab" data-plot="group-delay">Group Delay</button>
+        <span class="spacer"></span>
+        <button id="reset-zoom" class="tab-btn">Reset zoom</button>
+      </nav>
+      <div id="plot"></div>
+    </section>
+  </div>
+
+  <script src="js/filters.js"></script>
+  <script src="js/eq-model.js"></script>
+  <script src="js/plotter.js"></script>
+  <script src="js/reference-curve.js"></script>
+  <script src="js/yaml-io.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

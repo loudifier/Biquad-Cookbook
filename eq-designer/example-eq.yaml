@@ -1,0 +1,43 @@
+sample_rate: 48000
+output_gain_db: -7.5
+filters:
+  - type: highpass_2nd
+    bypassed: true
+    params:
+      f0: 116
+      q: 1.5
+      db: 6
+  - type: linkwitz_transform
+    bypassed: false
+    params:
+      f0: 116
+      q0: 1.5
+      fp: 68
+      qp: 0.707
+  - type: peaking_eq
+    bypassed: false
+    params:
+      f0: 1350
+      q0: 1.4
+      fp: 1100
+      qp: 0.8
+      q: 1
+      db: -6.5
+  - type: peaking_eq
+    bypassed: false
+    params:
+      f0: 5200
+      q: 1.53
+      db: -14.5
+  - type: peaking_eq
+    bypassed: false
+    params:
+      f0: 10000
+      q: 2
+      db: 14
+  - type: highshelf_2nd
+    bypassed: false
+    params:
+      f0: 11000
+      q: 0.707
+      db: -5.5
