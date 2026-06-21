@@ -79,12 +79,12 @@ a2 =  0
 
 gamma = cos(w0) / (1 + sin(w0))
 
-b0 = (1 + gamma) / 2
-b1 = (1 + gamma) / 2
-b2 =  0
-a0 =  1
-a1 = -gamma
-a2 =  0
+b0 =  (1 + gamma) / 2
+b1 = -(1 + gamma) / 2
+b2 =   0
+a0 =   1
+a1 =  -gamma
+a2 =   0
 
 
 
