@@ -226,13 +226,15 @@ function setupResetZoom() {
 function setupDisclosure() {
   const modal = document.getElementById('disclosure-modal');
   document.getElementById('btn-disclosure').addEventListener('click', () => {
+    modal.hidden = false;
     modal.classList.add('open');
   });
   document.getElementById('btn-close-disclosure').addEventListener('click', () => {
+    modal.hidden = true;
     modal.classList.remove('open');
   });
   modal.addEventListener('click', (e) => {
-    if (e.target === modal) modal.classList.remove('open');
+    if (e.target === modal) { modal.hidden = true; modal.classList.remove('open'); }
   });
 }
 
