@@ -1,5 +1,8 @@
 let appModel = null;
 let referenceCurve = null;
+let optTargetCurve = null;
+let optOptimizer = null;
+let optRunning = false;
 let currentTab = 'freq';
 let debounceTimer = null;
 let plotRevision = 0;
@@ -19,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupResetZoom();
   setupDivider();
   setupDisclosure();
+  setupOptimizeMode();
 
   renderFilterList();
   updatePlot();
@@ -138,7 +142,22 @@ function setupTabs() {
   });
 }
 
+function clearEQ() {
+  if (!confirm('Clear all filters and reset to defaults?')) return;
+  appModel.filters = [];
+  appModel.setSampleRate(48000);
+  appModel.setOutputGainDb(0);
+  document.getElementById('sample-rate').value = 48000;
+  document.getElementById('output-gain').value = 0;
+  renderFilterList();
+  document.dispatchEvent(new CustomEvent('eq-loaded'));
+  plotRevision++;
+  updatePlot();
+}
+
 function setupSaveLoad() {
+  document.getElementById('clear-eq').addEventListener('click', clearEQ);
+
   document.getElementById('save-eq').addEventListener('click', () => {
     downloadYAML(appModel, 'biquad-eq.yaml');
   });
@@ -173,8 +192,9 @@ function setupSaveLoad() {
       appModel.fromJSON(obj);
       document.getElementById('sample-rate').value = appModel.sampleRate;
       document.getElementById('output-gain').value = appModel.outputGainDb;
+      document.getElementById('clear-reference').style.display = 'none';
       renderFilterList();
-      referenceCurve = null;
+      document.dispatchEvent(new CustomEvent('eq-loaded'));
       plotRevision++;
       updatePlot();
     } catch (err) {
@@ -197,6 +217,7 @@ function setupReferenceLoad() {
       const curve = parseReferenceCSV(ev.target.result);
       if (curve) {
         referenceCurve = curve;
+        document.getElementById('clear-reference').style.display = '';
         if (currentTab === 'freq') updatePlot();
       } else {
         alert('Could not parse CSV. Expected columns: frequency, magnitude (dB)');
@@ -204,6 +225,12 @@ function setupReferenceLoad() {
     };
     reader.readAsText(file);
     e.target.value = '';
+  });
+
+  document.getElementById('clear-reference').addEventListener('click', () => {
+    referenceCurve = null;
+    document.getElementById('clear-reference').style.display = 'none';
+    if (currentTab === 'freq') updatePlot();
   });
 }
 
@@ -236,6 +263,231 @@ function setupDisclosure() {
   modal.addEventListener('click', (e) => {
     if (e.target === modal) { modal.hidden = true; modal.classList.remove('open'); }
   });
+}
+
+function setupOptimizeMode() {
+  const normalMode = document.getElementById('normal-mode');
+  const optMode = document.getElementById('optimize-mode');
+  const optParamList = document.getElementById('opt-param-list');
+  const optProgress = document.getElementById('opt-progress');
+  const optStart = document.getElementById('opt-start');
+  const optStop = document.getElementById('opt-stop');
+  const optToggle = document.getElementById('btn-optimize');
+  const optLoadTarget = document.getElementById('opt-load-target');
+  const optTargetInput = document.getElementById('opt-target-input');
+  const optTargetName = document.getElementById('opt-target-name');
+  const optIncludeGain = document.getElementById('opt-include-gain');
+  const optFmin = document.getElementById('opt-fmin');
+  const optFmax = document.getElementById('opt-fmax');
+  let inOptimizeMode = false;
+
+  function updateParentCheckbox(filterIndex) {
+    const group = optParamList.querySelector(`.opt-filter-group[data-fi="${filterIndex}"]`);
+    if (!group) return;
+    const children = group.querySelectorAll('.opt-param-checkbox');
+    const parentCb = group.querySelector('.opt-filter-checkbox');
+    if (!parentCb) return;
+    const allChecked = Array.from(children).every(cb => cb.checked);
+    parentCb.checked = allChecked;
+  }
+
+  function renderOptParamList() {
+    const html = [];
+    for (let i = 0; i < appModel.filters.length; i++) {
+      const f = appModel.filters[i];
+      if (f.bypassed) continue;
+      const def = FILTER_TYPES[f.type];
+      if (!def) continue;
+
+      const allLocked = def.params.every(p => f.locked[p.key]);
+      const groupChecked = !allLocked;
+
+      html.push(`<div class="opt-filter-group" data-fi="${i}">
+        <label class="opt-filter-header">
+          <input type="checkbox" class="opt-filter-checkbox" data-fi="${i}" ${groupChecked ? 'checked' : ''}>
+          <span>#${i + 1} ${def.name}</span>
+        </label>`);
+
+      for (const p of def.params) {
+        const val = f.params[p.key] !== undefined ? f.params[p.key] : p.default;
+        const checked = !f.locked[p.key];
+        const unit = p.key === 'f0' || p.key === 'fp' ? 'Hz' :
+                     p.key === 'q' || p.key === 'q0' || p.key === 'qp' ? '' :
+                     p.key === 'db' ? 'dB' : '';
+        html.push(`<label class="opt-param-item">
+          <input type="checkbox" class="opt-param-checkbox" data-fi="${i}" data-pk="${p.key}" ${checked ? 'checked' : ''}>
+          <span class="opt-param-key">${p.label}</span>
+          <span class="opt-param-val">${val}${unit}</span>
+        </label>`);
+      }
+
+      html.push(`</div>`);
+    }
+    optParamList.innerHTML = html.join('');
+
+    optParamList.querySelectorAll('.opt-param-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const fi = parseInt(cb.dataset.fi);
+        const pk = cb.dataset.pk;
+        appModel.setLocked(fi, pk, !cb.checked);
+        updateParentCheckbox(fi);
+      });
+    });
+
+    optParamList.querySelectorAll('.opt-filter-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const fi = parseInt(cb.dataset.fi);
+        const group = optParamList.querySelector(`.opt-filter-group[data-fi="${fi}"]`);
+        const children = group.querySelectorAll('.opt-param-checkbox');
+        children.forEach(child => {
+          child.checked = cb.checked;
+          const pk = child.dataset.pk;
+          appModel.setLocked(fi, pk, !cb.checked);
+        });
+      });
+    });
+  }
+
+  function toggleOptimizeMode() {
+    if (inOptimizeMode) {
+      if (optRunning) { optOptimizer.abort(); optRunning = false; }
+      inOptimizeMode = false;
+      optMode.style.display = 'none';
+      normalMode.style.display = '';
+      optStart.style.display = '';
+      optStop.style.display = 'none';
+      optProgress.textContent = '';
+      optToggle.textContent = 'Filter Optimization';
+      renderFilterList();
+      if (currentTab === 'freq') updatePlot();
+    } else {
+      if (appModel.filters.length === 0) {
+        alert('Add at least one filter first.');
+        return;
+      }
+      inOptimizeMode = true;
+      normalMode.style.display = 'none';
+      optMode.style.display = '';
+      optProgress.textContent = '';
+      optTargetName.textContent = optTargetCurve ? `Loaded (${optTargetCurve.freqs.length} pts)` : 'None';
+      optToggle.textContent = 'Exit Optimization';
+      renderOptParamList();
+    }
+  }
+
+  optToggle.addEventListener('click', toggleOptimizeMode);
+
+  document.addEventListener('eq-loaded', () => {
+    if (inOptimizeMode) renderOptParamList();
+  });
+
+  optLoadTarget.addEventListener('click', () => optTargetInput.click());
+
+  optTargetInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const curve = parseReferenceCSV(ev.target.result);
+      if (curve) {
+        optTargetCurve = curve;
+        optTargetName.textContent = `${file.name} (${curve.freqs.length} pts)`;
+        if (currentTab === 'freq') updatePlot();
+      } else {
+        alert('Could not parse target CSV');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  optStart.addEventListener('click', () => {
+    const mode = document.querySelector('input[name="opt-mode"]:checked').value;
+    if (mode === 'match' && !optTargetCurve) {
+      alert('Load a target curve first.');
+      return;
+    }
+
+    optRunning = true;
+    optStart.style.display = 'none';
+    optStop.style.display = '';
+
+    const fmin = parseFloat(optFmin.value) || 20;
+    const fmax = parseFloat(optFmax.value) || 20000;
+    const includeGain = optIncludeGain.checked;
+
+    const ps = ParamSpace.build(appModel, includeGain);
+    if (ps.names.length === 0) {
+      alert('No parameters available to optimize. Unlock some parameters first.');
+      optRunning = false;
+      optStart.style.display = '';
+      optStop.style.display = 'none';
+      return;
+    }
+
+    const { freqs: targetFreqsFloat, mags: targetMagRaw } = getOptimizationFreqs(
+      appModel.sampleRate, fmin, fmax,
+      mode === 'match' ? optTargetCurve : null
+    );
+    const targetMag = mode === 'flatten'
+      ? new Float64Array(targetFreqsFloat.length)
+      : targetMagRaw;
+
+    const inputInterp = referenceCurve
+      ? interpolateCurve(referenceCurve.freqs, referenceCurve.magDb, targetFreqsFloat)
+      : null;
+
+    optOptimizer = new Optimizer(appModel, ps, targetFreqsFloat, targetMag, inputInterp, mode);
+
+    optOptimizer.run({ iterations: 100000, initialDrift: 0.01, patience: 5000 }, (progress) => {
+      optProgress.textContent = `Iter ${progress.iteration.toLocaleString()} / Best loss: ${progress.bestLoss.toFixed(2)}`;
+      document.getElementById('output-gain').value = appModel.outputGainDb;
+      appModel._invalidate();
+      updatePlot();
+      if (progress.done) {
+        optRunning = false;
+        optStart.style.display = '';
+        optStop.style.display = 'none';
+        optProgress.textContent += optOptimizer._aborted ? ' — Stopped' : progress.earlyStop ? ' — Early stop' : ' — Done';
+        renderOptParamList();
+      }
+    });
+  });
+
+  optStop.addEventListener('click', () => {
+    if (optOptimizer) optOptimizer.abort();
+  });
+}
+
+function getOptimizationFreqs(sampleRate, fmin, fmax, targetCurve) {
+  const nyquist = sampleRate / 2;
+  const cutoff = 0.9 * nyquist;
+  if (targetCurve) {
+    const idxs = [];
+    for (let i = 0; i < targetCurve.freqs.length; i++) {
+      const f = targetCurve.freqs[i];
+      if (f >= fmin && f <= fmax && f <= cutoff) {
+        idxs.push(i);
+      }
+    }
+    const freqs = new Float64Array(idxs.length);
+    const mags = new Float64Array(idxs.length);
+    for (let j = 0; j < idxs.length; j++) {
+      freqs[j] = targetCurve.freqs[idxs[j]];
+      mags[j] = targetCurve.magDb[idxs[j]];
+    }
+    return { freqs, mags };
+  }
+  const lo = Math.max(1, fmin);
+  const hi = Math.min(cutoff, fmax);
+  const n = 200;
+  const freqs = new Float64Array(n);
+  const logLo = Math.log10(lo);
+  const logHi = Math.log10(hi);
+  for (let i = 0; i < n; i++) {
+    freqs[i] = Math.pow(10, logLo + (logHi - logLo) * i / (n - 1));
+  }
+  return { freqs, mags: null };
 }
 
 function setupDivider() {
@@ -346,7 +598,7 @@ function updatePlot() {
       case 'freq': {
         const freqs = appModel.getFreqs();
         const magDb = appModel.getMagDb();
-        plotFreqResponse(freqs, magDb, referenceCurve, plotRevision);
+        plotFreqResponse(freqs, magDb, referenceCurve, plotRevision, optTargetCurve);
         break;
       }
       case 'phase': {

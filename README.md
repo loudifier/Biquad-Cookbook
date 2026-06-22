@@ -5,7 +5,7 @@
 
 ### [Interactive EQ Designer](https://loudifier.github.io/Biquad-Cookbook)
 
-Webpage that lets you easily build up an EQ and see the combined frequency response, phase, impulse response, and group delay of multiple filters. Load a frequency response curve and see the effective response with those filters applied
+Webpage that lets you easily build up an EQ and see the combined frequency response, phase, impulse response, and group delay of multiple filters. Load a frequency response curve and see the effective response with those filters applied. Includes a Monte Carlo optimization routine to fine-tune filters to match a target response curve.
 
 [![EQ designer](img/eq-designer.png)](https://loudifier.github.io/Biquad-Cookbook)
 

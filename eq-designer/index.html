@@ -32,34 +32,80 @@
         <label>Sample Rate: <input type="number" id="sample-rate" value="48000" min="1000" max="192000" step="1000"> Hz</label>
         <label>Output Gain: <input type="number" id="output-gain" value="0" step="0.5"> dB</label>
       </div>
-      <div class="filter-panel-header">
-        <select id="add-filter-select">
-          <option value="">+ Add Filter...</option>
-          <option value="lowpass_1st">1st Order Lowpass</option>
-          <option value="highpass_1st">1st Order Highpass</option>
-          <option value="allpass_1st">1st Order Allpass</option>
-          <option value="lowshelf_1st">1st Order Low Shelf</option>
-          <option value="highshelf_1st">1st Order High Shelf</option>
-          <option value="lowpass_2nd">2nd Order Lowpass</option>
-          <option value="highpass_2nd">2nd Order Highpass</option>
-          <option value="allpass_2nd">2nd Order Allpass</option>
-          <option value="lowshelf_2nd">2nd Order Low Shelf</option>
-          <option value="highshelf_2nd">2nd Order High Shelf</option>
-          <option value="peaking_eq">Peaking EQ</option>
-          <option value="bandpass_skirt">Bandpass (Skirt Gain)</option>
-          <option value="bandpass_peak">Bandpass (Peak Gain)</option>
-          <option value="notch">Notch</option>
-          <option value="linkwitz_transform">Linkwitz Transform</option>
-        </select>
+      <div id="normal-mode">
+        <div class="filter-panel-header">
+          <select id="add-filter-select">
+            <option value="">+ Add Filter...</option>
+            <option value="lowpass_1st">1st Order Lowpass</option>
+            <option value="highpass_1st">1st Order Highpass</option>
+            <option value="allpass_1st">1st Order Allpass</option>
+            <option value="lowshelf_1st">1st Order Low Shelf</option>
+            <option value="highshelf_1st">1st Order High Shelf</option>
+            <option value="lowpass_2nd">2nd Order Lowpass</option>
+            <option value="highpass_2nd">2nd Order Highpass</option>
+            <option value="allpass_2nd">2nd Order Allpass</option>
+            <option value="lowshelf_2nd">2nd Order Low Shelf</option>
+            <option value="highshelf_2nd">2nd Order High Shelf</option>
+            <option value="peaking_eq">Peaking EQ</option>
+            <option value="bandpass_skirt">Bandpass (Skirt Gain)</option>
+            <option value="bandpass_peak">Bandpass (Peak Gain)</option>
+            <option value="notch">Notch</option>
+            <option value="linkwitz_transform">Linkwitz Transform</option>
+          </select>
+        </div>
+        <ul id="filter-list"></ul>
       </div>
 
-      <ul id="filter-list"></ul>
+      <div id="optimize-mode" style="display:none">
+        <div class="optimize-panel">
+          <div class="optimize-section">
+            <label class="optimize-label">Freq Range (Hz)</label>
+            <div class="optimize-range">
+              <input type="number" id="opt-fmin" value="20" min="1" max="100000" step="1">
+              <span>to</span>
+              <input type="number" id="opt-fmax" value="20000" min="1" max="100000" step="1">
+            </div>
+          </div>
+          <div class="optimize-section">
+            <label class="optimize-checkbox">
+              <input type="checkbox" id="opt-include-gain"> Optimize output gain
+            </label>
+          </div>
+          <div class="optimize-section">
+            <label class="optimize-label">Target Curve</label>
+            <div class="optimize-target-row">
+              <button id="opt-load-target" class="btn">Load Target</button>
+              <span id="opt-target-name" class="optimize-filename"></span>
+            </div>
+            <input type="file" id="opt-target-input" hidden accept=".csv,.txt">
+          </div>
+          <div class="optimize-section">
+            <label class="optimize-label">Optimization Mode</label>
+            <div class="optimize-radio-row">
+              <label><input type="radio" name="opt-mode" value="match" checked> Match to Target</label>
+              <label><input type="radio" name="opt-mode" value="flatten"> Flatten</label>
+            </div>
+          </div>
+          <div class="optimize-section" id="opt-params-section">
+            <label class="optimize-label">Parameters to Optimize</label>
+            <div id="opt-param-list"></div>
+          </div>
+          <div class="optimize-section">
+            <button id="opt-start" class="btn btn-primary">Start Optimization</button>
+            <button id="opt-stop" class="btn" style="display:none">Stop</button>
+            <div id="opt-progress" class="optimize-progress"></div>
+          </div>
+        </div>
+      </div>
 
       <div class="filter-panel-actions">
+        <button id="clear-eq" class="btn">Clear EQ</button>
         <button id="save-eq" class="btn">Save EQ</button>
         <button id="load-eq" class="btn">Load EQ</button>
         <button id="export-curve" class="btn">Export Curve</button>
         <button id="load-reference" class="btn">Load Curve</button>
+        <button id="clear-reference" class="btn" style="display:none">Clear Curve</button>
+        <button id="btn-optimize" class="btn">Filter Optimization</button>
         <input type="file" id="load-eq-input" hidden accept=".yaml,.yml">
         <input type="file" id="load-reference-input" hidden accept=".csv,.txt">
       </div>
@@ -97,6 +143,7 @@
   <script src="js/plotter.js"></script>
   <script src="js/reference-curve.js"></script>
   <script src="js/yaml-io.js"></script>
+  <script src="js/optimizer.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -62,7 +62,7 @@ function buildLayout(uirevision, extra) {
   };
 }
 
-function plotFreqResponse(freqs, magDb, referenceCurve, revision) {
+function plotFreqResponse(freqs, magDb, referenceCurve, revision, targetCurve) {
   const traces = [{
     x: Array.from(freqs),
     y: Array.from(magDb),
@@ -93,6 +93,17 @@ function plotFreqResponse(freqs, magDb, referenceCurve, revision) {
       mode: 'lines',
       name: 'Reference + EQ',
       line: { color: '#8e44ad', width: 2.5 }
+    });
+  }
+
+  if (targetCurve) {
+    traces.push({
+      x: Array.from(targetCurve.freqs),
+      y: Array.from(targetCurve.magDb),
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Target',
+      line: { color: '#e74c3c', width: 1.5, dash: 'dot' }
     });
   }
 

@@ -10,13 +10,21 @@ class EQModel {
     this._groupDelay = null;
   }
 
+  _defaultLocked(type) {
+    const def = FILTER_TYPES[type];
+    if (!def) return {};
+    const locked = {};
+    for (const p of def.params) locked[p.key] = false;
+    return locked;
+  }
+
   addFilter(type, params) {
-    this.filters.push({ type, params: { ...params }, bypassed: false });
+    this.filters.push({ type, params: { ...params }, bypassed: false, locked: this._defaultLocked(type) });
     this._invalidate();
   }
 
   insertFilter(index, type, params) {
-    this.filters.splice(index, 0, { type, params: { ...params }, bypassed: false });
+    this.filters.splice(index, 0, { type, params: { ...params }, bypassed: false, locked: this._defaultLocked(type) });
     this._invalidate();
   }
 
@@ -34,11 +42,16 @@ class EQModel {
   updateFilter(index, updates) {
     if (updates.type) {
       this.filters[index].type = updates.type;
+      this.filters[index].locked = this._defaultLocked(updates.type);
     }
     if (updates.params) {
       Object.assign(this.filters[index].params, updates.params);
     }
     this._invalidate();
+  }
+
+  setLocked(index, paramKey, value) {
+    this.filters[index].locked[paramKey] = !!value;
   }
 
   toggleBypass(index) {
@@ -243,6 +256,7 @@ class EQModel {
       filters: this.filters.map(f => ({
         type: f.type,
         bypassed: f.bypassed || false,
+        locked: { ...f.locked },
         params: { ...f.params }
       }))
     };
@@ -256,7 +270,9 @@ class EQModel {
       for (const f of obj.filters) {
         if (FILTER_TYPES[f.type]) {
           const params = { ...f.params };
-          this.filters.push({ type: f.type, params, bypassed: f.bypassed || false });
+          const locked = this._defaultLocked(f.type);
+          if (f.locked) Object.assign(locked, f.locked);
+          this.filters.push({ type: f.type, params, bypassed: f.bypassed || false, locked });
         }
       }
     }
