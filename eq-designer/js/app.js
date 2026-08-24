@@ -34,7 +34,7 @@ function setupGlobalControls() {
 
   srInput.addEventListener('input', () => {
     const v = parseFloat(srInput.value);
-    if (v > 0) { appModel.setSampleRate(v); scheduleUpdate(); }
+    if (v > 0) { appModel.setSampleRate(v); scheduleUpdate(true); }
   });
 
   gainInput.addEventListener('input', () => {
@@ -528,6 +528,13 @@ function renderFilterList() {
   const list = document.getElementById('filter-list');
   const html = [];
 
+  const openCoeffs = new Set();
+  list.querySelectorAll('.filter-item').forEach(li => {
+    const idx = parseInt(li.dataset.index);
+    const details = li.querySelector('.coeffs-details');
+    if (!isNaN(idx) && details && details.open) openCoeffs.add(idx);
+  });
+
   appModel.filters.forEach((filter, i) => {
     const def = FILTER_TYPES[filter.type];
     if (!def) return;
@@ -577,11 +584,21 @@ function renderFilterList() {
   });
 
   list.innerHTML = html.join('');
+
+  openCoeffs.forEach(i => {
+    const li = list.querySelector(`.filter-item[data-index="${i}"]`);
+    const details = li && li.querySelector('.coeffs-details');
+    if (details) details.open = true;
+  });
 }
 
-function scheduleUpdate() {
+function scheduleUpdate(renderList) {
   if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => { updatePlot(); debounceTimer = null; }, 100);
+  debounceTimer = setTimeout(() => {
+    debounceTimer = null;
+    if (renderList) renderFilterList();
+    updatePlot();
+  }, 100);
 }
 
 function updatePlot() {
